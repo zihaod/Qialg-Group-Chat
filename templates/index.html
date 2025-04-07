@@ -1,1 +1,220 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 多智能体群聊</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        .chat-container {
+            height: calc(100vh - 150px);
+        }
+        .message {
+            animation: fadeIn 0.3s;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .typing-indicator {
+            display: flex;
+            align-items: center;
+        }
+        .typing-dot {
+            height: 8px;
+            width: 8px;
+            border-radius: 50%;
+            background-color: #6b7280;
+            margin: 0 2px;
+            animation: typingAnimation 1.4s infinite ease-in-out;
+        }
+        .typing-dot:nth-child(1) { animation-delay: 0s; }
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes typingAnimation {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-5px); }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans">
+    <div class="container mx-auto p-4">
+        <h1 class="text-3xl font-bold text-center text-indigo-700 mb-6">AI 多智能体群聊</h1>
+        
+        <div class="bg-white rounded-lg shadow-lg overflow-hidden">
+            <!-- Chat Messages Area -->
+            <div class="chat-container overflow-y-auto p-4" id="chatMessages">
+                <div class="message bg-gray-100 rounded-lg p-3 mb-3 max-w-3/4">
+                    <div class="font-bold text-indigo-700">「系统」</div>
+                    <div>欢迎使用AI多智能体群聊系统，请输入您的消息开始对话。</div>
+                </div>
+            </div>
+            
+            <!-- Input Area -->
+            <div class="border-t border-gray-200 p-4 bg-gray-50">
+                <div class="flex items-center">
+                    <input type="text" id="messageInput" 
+                           class="flex-1 border border-gray-300 rounded-l-lg py-2 px-4 focus:outline-none focus:ring-2 focus:ring-indigo-500" 
+                           placeholder="请输入您的消息..." autocomplete="off">
+                    <button id="sendButton" 
+                            class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-r-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        发送
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="mt-4 text-center text-gray-500 text-sm">
+            <p>当前群聊成员: 用户, 助手, 专家, 思考者</p>
+        </div>
+    </div>
 
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const chatMessages = document.getElementById('chatMessages');
+            const messageInput = document.getElementById('messageInput');
+            const sendButton = document.getElementById('sendButton');
+            
+            let lastMessageId = -1;
+            let isWaitingForResponse = false;
+            
+            // Function to add a message to the chat
+            function addMessage(sender, content, isNew = true) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message ${isNew ? 'animate-fade-in' : ''} ${sender === '用户' ? 'ml-auto bg-indigo-100' : 'bg-gray-100'} rounded-lg p-3 mb-3 max-w-3/4`;
+                
+                const senderDiv = document.createElement('div');
+                senderDiv.className = 'font-bold ' + (sender === '用户' ? 'text-indigo-600' : 
+                                                      sender === '助手' ? 'text-green-600' : 
+                                                      sender === '专家' ? 'text-blue-600' : 
+                                                      sender === '思考者' ? 'text-purple-600' : 'text-gray-600');
+                senderDiv.textContent = `「${sender}」`;
+                
+                const contentDiv = document.createElement('div');
+                contentDiv.textContent = content;
+                
+                messageDiv.appendChild(senderDiv);
+                messageDiv.appendChild(contentDiv);
+                
+                chatMessages.appendChild(messageDiv);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+            
+            // Function to show typing indicator
+            function showTypingIndicator(agent) {
+                const indicatorDiv = document.createElement('div');
+                indicatorDiv.id = 'typingIndicator';
+                indicatorDiv.className = 'message bg-gray-100 rounded-lg p-3 mb-3 max-w-3/4';
+                
+                const senderDiv = document.createElement('div');
+                senderDiv.className = 'font-bold ' + (
+                    agent === '助手' ? 'text-green-600' : 
+                    agent === '专家' ? 'text-blue-600' : 
+                    agent === '思考者' ? 'text-purple-600' : 'text-gray-600'
+                );
+                senderDiv.textContent = `「${agent}」`;
+                
+                const indicatorContainer = document.createElement('div');
+                indicatorContainer.className = 'typing-indicator';
+                
+                for (let i = 0; i < 3; i++) {
+                    const dot = document.createElement('div');
+                    dot.className = 'typing-dot';
+                    indicatorContainer.appendChild(dot);
+                }
+                
+                indicatorDiv.appendChild(senderDiv);
+                indicatorDiv.appendChild(indicatorContainer);
+                
+                chatMessages.appendChild(indicatorDiv);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+            
+            // Function to remove typing indicator
+            function removeTypingIndicator() {
+                const indicator = document.getElementById('typingIndicator');
+                if (indicator) {
+                    indicator.remove();
+                }
+            }
+            
+            // Function to send a message
+            function sendMessage() {
+                const message = messageInput.value.trim();
+                if (message && !isWaitingForResponse) {
+                    // Clear input field
+                    messageInput.value = '';
+                    isWaitingForResponse = true;
+                    
+                    // Send message to server
+                    fetch('/send_message', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ message: message }),
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        // Message sent successfully, agents will start responding
+                        showTypingIndicator('助手');
+                    })
+                    .catch(error => {
+                        console.error('Error sending message:', error);
+                        isWaitingForResponse = false;
+                    });
+                }
+            }
+            
+            // Event listeners
+            sendButton.addEventListener('click', sendMessage);
+            messageInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    sendMessage();
+                }
+            });
+            
+            // Poll for new messages every second
+            function pollMessages() {
+                fetch(`/get_messages?last_id=${lastMessageId}`)
+                .then(response => response.json())
+                .then(messages => {
+                    if (messages.length > 0) {
+                        // Update last message id
+                        lastMessageId = messages[messages.length - 1].id;
+                        
+                        // Display messages
+                        messages.forEach(msg => {
+                            if (msg.sender === '用户' && document.querySelectorAll('.message').length > 1) {
+                                // Skip user messages that are already displayed
+                                return;
+                            }
+                            
+                            removeTypingIndicator();
+                            addMessage(msg.sender, msg.content);
+                            
+                            // Show typing indicator for next agent
+                            if (msg.sender === '用户') {
+                                showTypingIndicator('助手');
+                            } else if (msg.sender === '助手') {
+                                showTypingIndicator('专家');
+                            } else if (msg.sender === '专家') {
+                                showTypingIndicator('思考者');
+                            } else if (msg.sender === '思考者') {
+                                // All agents responded
+                                isWaitingForResponse = false;
+                            }
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Error polling messages:', error);
+                });
+            }
+            
+            // Start polling
+            setInterval(pollMessages, 1000);
+        });
+    </script>
+</body>
+</html>
