@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI 多智能体群聊</title>
+    <title>PawkeyLand群聊</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <style>
         .chat-container {
@@ -46,7 +46,7 @@
             <div class="chat-container overflow-y-auto p-4" id="chatMessages">
                 <div class="message bg-gray-100 rounded-lg p-3 mb-3 max-w-3/4">
                     <div class="font-bold text-indigo-700">「系统」</div>
-                    <div>欢迎使用AI多智能体群聊系统，请输入您的消息开始对话。</div>
+                    <div>欢迎使用PawkeyLand群聊系统，请输入您的消息开始对话。</div>
                 </div>
             </div>
             
@@ -65,7 +65,7 @@
         </div>
         
         <div class="mt-4 text-center text-gray-500 text-sm">
-            <p>当前群聊成员: 用户, 助手, 专家, 思考者</p>
+            <p>当前群聊成员: 用户, 网络情报专家🌍, 智能硬件管家💻, 专业临床医生🧑‍⚕️, 温柔体贴小助理🌺, 群聊守护者🛡️</p>
         </div>
     </div>
 
@@ -84,10 +84,11 @@
                 messageDiv.className = `message ${isNew ? 'animate-fade-in' : ''} ${sender === '用户' ? 'ml-auto bg-indigo-100' : 'bg-gray-100'} rounded-lg p-3 mb-3 max-w-3/4`;
                 
                 const senderDiv = document.createElement('div');
-                senderDiv.className = 'font-bold ' + (sender === '用户' ? 'text-indigo-600' : 
-                                                      sender === '助手' ? 'text-green-600' : 
-                                                      sender === '专家' ? 'text-blue-600' : 
-                                                      sender === '思考者' ? 'text-purple-600' : 'text-gray-600');
+                senderDiv.className = 'font-bold ' + (sender === '网络情报专家' ? 'text-indigo-600' : 
+                                                      sender === '智能硬件管家' ? 'text-green-600' : 
+                                                      sender === '专业临床医生' ? 'text-blue-600' : 
+                                                      sender === '温柔体贴小助理' ? 'text-purple-600' : 
+                                                      sender === '群聊守护者' ? 'text-yellow-600' : text-gray-600');
                 senderDiv.textContent = `「${sender}」`;
                 
                 const contentDiv = document.createElement('div');
@@ -108,10 +109,11 @@
                 
                 const senderDiv = document.createElement('div');
                 senderDiv.className = 'font-bold ' + (
-                    agent === '助手' ? 'text-green-600' : 
-                    agent === '专家' ? 'text-blue-600' : 
-                    agent === '思考者' ? 'text-purple-600' : 'text-gray-600'
-                );
+                    agent === '网络情报专家' ? 'text-indigo-600' : 
+                    agent === '智能硬件管家' ? 'text-green-600' : 
+                    agent === '专业临床医生' ? 'text-blue-600' : 
+                    agent === '温柔体贴小助理' ? 'text-purple-600' : 
+                    agent === '群聊守护者' ? 'text-yellow-600' : text-gray-600');
                 senderDiv.textContent = `「${agent}」`;
                 
                 const indicatorContainer = document.createElement('div');
@@ -195,15 +197,10 @@
                             
                             // Show typing indicator for next agent
                             if (msg.sender === '用户') {
-                                showTypingIndicator('助手');
-                            } else if (msg.sender === '助手') {
-                                showTypingIndicator('专家');
-                            } else if (msg.sender === '专家') {
-                                showTypingIndicator('思考者');
-                            } else if (msg.sender === '思考者') {
-                                // All agents responded
-                                isWaitingForResponse = false;
-                            }
+                                showTypingIndicator('输入中');
+                            } else {
+                                showTypingIndicator(msg.sender);
+                            } 
                         });
                     }
                 })
