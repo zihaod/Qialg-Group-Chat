@@ -5,62 +5,21 @@ import json
 
 # Import your existing group chat manager
 # from your_module import GroupChatManager  # Uncomment and adjust this line
+from groupchat. import *
+
 
 app = Flask(__name__)
 
+# Initialize
+ANTHROPIC_API_KEY = "key_here"
+client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+agents = [ClaudeGroupAgent(client, *spec.values()) for spec in agent_specs[:5]]
+group_chat = GroupChat(agents)
+manager = ClaudeGroupManager(client, "群管理员", "一个理性公正的群管理员。", group_chat)
 # Global variable to store chat messages
 chat_messages = []
 # Create a lock for thread-safe operations
 chat_lock = threading.Lock()
-
-class MockGroupChatManager:
-    """Mock implementation for testing without the actual backend"""
-    def __init__(self):
-        self.agent_specs = [
-            {"name": "助手", "desc": "一个有帮助的助手"},
-            {"name": "专家", "desc": "领域专家"},
-            {"name": "思考者", "desc": "深度思考者"}
-        ]
-        self.group_chat = MockGroupChat()
-    
-    def generate(self, messages):
-        # Mock response orders
-        return [
-            {"名称": "助手", "发言顺序": 1},
-            {"名称": "专家", "发言顺序": 2},
-            {"名称": "思考者", "发言顺序": 3}
-        ]
-
-class MockGroupChat:
-    """Mock implementation of group chat"""
-    def __init__(self):
-        self.messages = []
-        self.agents = [MockAgent("助手"), MockAgent("专家"), MockAgent("思考者")]
-    
-    def append_message(self, sender, content):
-        self.messages.append({"sender": sender, "content": content})
-        global chat_messages
-        with chat_lock:
-            chat_messages.append({"sender": sender, "content": content})
-    
-    def get_transcript(self):
-        return "\n".join([f"「{msg['sender']}」：{msg['content']}" for msg in self.messages])
-
-class MockAgent:
-    """Mock implementation of an agent"""
-    def __init__(self, name):
-        self.name = name
-    
-    def generate(self, messages):
-        # Simulate thinking time
-        time.sleep(1)
-        return f"这是来自{self.name}的回复。" + ("我可以帮助解决问题。" if self.name == "助手" else 
-               "根据我的专业知识..." if self.name == "专家" else 
-               "我从不同角度思考这个问题...")
-
-# Initialize the manager (use mock for now)
-# Replace this with your actual GroupChatManager
-manager = MockGroupChatManager()
 
 @app.route('/')
 def index():
