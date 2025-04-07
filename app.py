@@ -5,7 +5,7 @@ import json
 
 # Import your existing group chat manager
 # from your_module import GroupChatManager  # Uncomment and adjust this line
-from groupchat. import *
+from groupchat.backend import *
 
 
 app = Flask(__name__)
