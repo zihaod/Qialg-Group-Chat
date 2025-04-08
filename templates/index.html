@@ -3,214 +3,407 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PawkeyLand群聊</title>
+    <title>AI宠物助手群聊</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
         .chat-container {
-            height: calc(100vh - 150px);
+            height: calc(100vh - 180px);
+            overflow-y: auto;
+            scroll-behavior: smooth;
         }
         .message {
-            animation: fadeIn 0.3s;
+            margin-bottom: 12px;
+            animation: fadeIn 0.3s ease-in-out;
         }
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
-        .typing-indicator {
+        .bubble {
+            position: relative;
+            border-radius: 18px;
+            padding: 12px 16px;
+            max-width: 80%;
+            word-wrap: break-word;
+        }
+        .bubble::after {
+            content: '';
+            position: absolute;
+            width: 0;
+            height: 0;
+            border: 8px solid transparent;
+        }
+        .user-bubble {
+            background-color: #0084ff;
+            color: white;
+            margin-left: auto;
+            margin-right: 10px;
+        }
+        .user-bubble::after {
+            border-left-color: #0084ff;
+            border-bottom: 0;
+            top: 15px;
+            right: -15px;
+        }
+        .agent-bubble {
+            background-color: #f0f0f0;
+            color: #333;
+            margin-left: 10px;
+        }
+        .agent-bubble::after {
+            border-right-color: #f0f0f0;
+            border-bottom: 0;
+            top: 15px;
+            left: -15px;
+        }
+        .agent-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
             display: flex;
             align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            color: white;
         }
-        .typing-dot {
-            height: 8px;
-            width: 8px;
+        .avatar-colors {
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+        }
+        .thinking {
+            display: none;
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 10px;
+            margin-top: 5px;
+            font-size: 0.9em;
+            color: #64748b;
+            white-space: pre-wrap;
+        }
+        .toggle-thinking {
+            font-size: 0.8em;
+            color: #6366f1;
+            cursor: pointer;
+            display: block;
+            margin-top: 5px;
+        }
+        .typing-indicator {
+            display: inline-block;
+            text-align: center;
+        }
+        .typing-indicator span {
+            height: 10px;
+            width: 10px;
+            background-color: #93c5fd;
             border-radius: 50%;
-            background-color: #6b7280;
+            display: inline-block;
             margin: 0 2px;
-            animation: typingAnimation 1.4s infinite ease-in-out;
+            animation: bounce 1.5s infinite ease-in-out;
         }
-        .typing-dot:nth-child(1) { animation-delay: 0s; }
-        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
-        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
-        @keyframes typingAnimation {
-            0%, 60%, 100% { transform: translateY(0); }
-            30% { transform: translateY(-5px); }
+        .typing-indicator span:nth-child(1) { animation-delay: 0s; }
+        .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
         }
     </style>
 </head>
-<body class="bg-gray-100 font-sans">
-    <div class="container mx-auto p-4">
-        <h1 class="text-3xl font-bold text-center text-indigo-700 mb-6">AI 多智能体群聊</h1>
-        
+<body class="bg-gray-100">
+    <div class="container mx-auto px-4 py-6 max-w-5xl">
         <div class="bg-white rounded-lg shadow-lg overflow-hidden">
-            <!-- Chat Messages Area -->
-            <div class="chat-container overflow-y-auto p-4" id="chatMessages">
-                <div class="message bg-gray-100 rounded-lg p-3 mb-3 max-w-3/4">
-                    <div class="font-bold text-indigo-700">「系统」</div>
-                    <div>欢迎使用PawkeyLand群聊系统，请输入您的消息开始对话。</div>
+            <!-- Header -->
+            <div class="bg-indigo-600 text-white px-6 py-4 flex justify-between items-center">
+                <div>
+                    <h1 class="text-2xl font-bold">AI宠物助手群聊</h1>
+                    <p class="text-sm text-indigo-200">与多位AI助手一同解决宠物问题</p>
+                </div>
+                <button id="reset-btn" class="bg-indigo-700 hover:bg-indigo-800 px-4 py-2 rounded-lg text-sm font-medium">
+                    <i class="fas fa-redo-alt mr-1"></i> 重置对话
+                </button>
+            </div>
+            
+            <!-- Chat Area -->
+            <div id="chat-container" class="chat-container p-4 bg-gray-50">
+                <div class="welcome-message text-center py-8 text-gray-500">
+                    <i class="fas fa-paw text-5xl mb-3 text-indigo-400"></i>
+                    <h2 class="text-xl font-semibold mb-2">欢迎使用AI宠物助手群聊!</h2>
+                    <p>输入您的宠物相关问题，多位AI助手将协作为您解答</p>
+                </div>
+                <!-- Chat messages will be dynamically added here -->
+                <div id="typing-indicator" class="message flex items-start hidden">
+                    <div class="agent-avatar avatar-colors flex-shrink-0 mr-3">
+                        <i class="fas fa-spinner"></i>
+                    </div>
+                    <div class="bubble agent-bubble">
+                        <div class="typing-indicator">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </div>
+                    </div>
                 </div>
             </div>
             
             <!-- Input Area -->
-            <div class="border-t border-gray-200 p-4 bg-gray-50">
-                <div class="flex items-center">
-                    <input type="text" id="messageInput" 
-                           class="flex-1 border border-gray-300 rounded-l-lg py-2 px-4 focus:outline-none focus:ring-2 focus:ring-indigo-500" 
-                           placeholder="请输入您的消息..." autocomplete="off">
-                    <button id="sendButton" 
-                            class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-r-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                        发送
+            <div class="border-t border-gray-200 p-4 bg-white">
+                <form id="message-form" class="flex items-center">
+                    <div class="relative flex-grow">
+                        <input type="text" id="message-input" class="w-full pl-4 pr-10 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="发送消息..." required>
+                        <button type="button" id="clear-btn" class="absolute right-3 top-3 text-gray-400 hover:text-gray-600">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <button type="submit" class="ml-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg p-3">
+                        <i class="fas fa-paper-plane"></i>
                     </button>
-                </div>
+                </form>
             </div>
         </div>
         
-        <div class="mt-4 text-center text-gray-500 text-sm">
-            <p>当前群聊成员: 用户, 网络情报专家🌍, 智能硬件管家💻, 专业临床医生🧑‍⚕️, 温柔体贴小助理🌺, 群聊守护者🛡️</p>
+        <!-- Agent Info Area -->
+        <div class="mt-6 bg-white rounded-lg shadow-lg p-4">
+            <h2 class="text-xl font-bold mb-4 text-gray-800">群聊成员</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="p-3 border border-gray-200 rounded-lg">
+                    <div class="flex items-center">
+                        <div class="agent-avatar avatar-colors flex-shrink-0 mr-3">
+                            <i class="fas fa-globe"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-medium">网络情报专家</h3>
+                            <p class="text-sm text-gray-600">搜集互联网资讯，为用户提供专业情报支持</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="p-3 border border-gray-200 rounded-lg">
+                    <div class="flex items-center">
+                        <div class="agent-avatar avatar-colors flex-shrink-0 mr-3" style="background: linear-gradient(135deg, #10b981, #059669);">
+                            <i class="fas fa-microchip"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-medium">智能硬件管家</h3>
+                            <p class="text-sm text-gray-600">管理宠物智能设备，分析行为体征数据</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="p-3 border border-gray-200 rounded-lg">
+                    <div class="flex items-center">
+                        <div class="agent-avatar avatar-colors flex-shrink-0 mr-3" style="background: linear-gradient(135deg, #ef4444, #dc2626);">
+                            <i class="fas fa-user-md"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-medium">专业临床医生</h3>
+                            <p class="text-sm text-gray-600">经验丰富的宠物兽医，提供专业诊断</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="p-3 border border-gray-200 rounded-lg">
+                    <div class="flex items-center">
+                        <div class="agent-avatar avatar-colors flex-shrink-0 mr-3" style="background: linear-gradient(135deg, #f97316, #ea580c);">
+                            <i class="fas fa-heart"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-medium">温柔体贴小助理</h3>
+                            <p class="text-sm text-gray-600">情绪疏导与安慰，活跃群聊气氛</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="p-3 border border-gray-200 rounded-lg">
+                    <div class="flex items-center">
+                        <div class="agent-avatar avatar-colors flex-shrink-0 mr-3" style="background: linear-gradient(135deg, #3b82f6, #2563eb);">
+                            <i class="fas fa-shield-alt"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-medium">群聊守护者</h3>
+                            <p class="text-sm text-gray-600">处理不当请求，维护群聊秩序</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            const chatMessages = document.getElementById('chatMessages');
-            const messageInput = document.getElementById('messageInput');
-            const sendButton = document.getElementById('sendButton');
+            const messageForm = document.getElementById('message-form');
+            const messageInput = document.getElementById('message-input');
+            const chatContainer = document.getElementById('chat-container');
+            const resetBtn = document.getElementById('reset-btn');
+            const clearBtn = document.getElementById('clear-btn');
+            const typingIndicator = document.getElementById('typing-indicator');
             
-            let lastMessageId = -1;
-            let isWaitingForResponse = false;
+            // Clear input field
+            clearBtn.addEventListener('click', function() {
+                messageInput.value = '';
+                messageInput.focus();
+            });
             
-            // Function to add a message to the chat
-            function addMessage(sender, content, isNew = true) {
-                const messageDiv = document.createElement('div');
-                messageDiv.className = `message ${isNew ? 'animate-fade-in' : ''} ${sender === '用户' ? 'ml-auto bg-indigo-100' : 'bg-gray-100'} rounded-lg p-3 mb-3 max-w-3/4`;
-                
-                const senderDiv = document.createElement('div');
-                senderDiv.className = 'font-bold ' + (sender === '网络情报专家' ? 'text-indigo-600' : 
-                                                      sender === '智能硬件管家' ? 'text-green-600' : 
-                                                      sender === '专业临床医生' ? 'text-blue-600' : 
-                                                      sender === '温柔体贴小助理' ? 'text-purple-600' : 
-                                                      sender === '群聊守护者' ? 'text-yellow-600' : text-gray-600');
-                senderDiv.textContent = `「${sender}」`;
-                
-                const contentDiv = document.createElement('div');
-                contentDiv.textContent = content;
-                
-                messageDiv.appendChild(senderDiv);
-                messageDiv.appendChild(contentDiv);
-                
-                chatMessages.appendChild(messageDiv);
-                chatMessages.scrollTop = chatMessages.scrollHeight;
-            }
-            
-            // Function to show typing indicator
-            function showTypingIndicator(agent) {
-                const indicatorDiv = document.createElement('div');
-                indicatorDiv.id = 'typingIndicator';
-                indicatorDiv.className = 'message bg-gray-100 rounded-lg p-3 mb-3 max-w-3/4';
-                
-                const senderDiv = document.createElement('div');
-                senderDiv.className = 'font-bold ' + (
-                    agent === '网络情报专家' ? 'text-indigo-600' : 
-                    agent === '智能硬件管家' ? 'text-green-600' : 
-                    agent === '专业临床医生' ? 'text-blue-600' : 
-                    agent === '温柔体贴小助理' ? 'text-purple-600' : 
-                    agent === '群聊守护者' ? 'text-yellow-600' : text-gray-600');
-                senderDiv.textContent = `「${agent}」`;
-                
-                const indicatorContainer = document.createElement('div');
-                indicatorContainer.className = 'typing-indicator';
-                
-                for (let i = 0; i < 3; i++) {
-                    const dot = document.createElement('div');
-                    dot.className = 'typing-dot';
-                    indicatorContainer.appendChild(dot);
-                }
-                
-                indicatorDiv.appendChild(senderDiv);
-                indicatorDiv.appendChild(indicatorContainer);
-                
-                chatMessages.appendChild(indicatorDiv);
-                chatMessages.scrollTop = chatMessages.scrollHeight;
-            }
-            
-            // Function to remove typing indicator
-            function removeTypingIndicator() {
-                const indicator = document.getElementById('typingIndicator');
-                if (indicator) {
-                    indicator.remove();
-                }
-            }
-            
-            // Function to send a message
-            function sendMessage() {
-                const message = messageInput.value.trim();
-                if (message && !isWaitingForResponse) {
-                    // Clear input field
-                    messageInput.value = '';
-                    isWaitingForResponse = true;
-                    
-                    // Send message to server
-                    fetch('/send_message', {
+            // Reset chat
+            resetBtn.addEventListener('click', function() {
+                if (confirm('确定要重置对话吗？这将清除所有聊天记录。')) {
+                    fetch('/api/reset', {
                         method: 'POST',
                         headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({ message: message }),
+                            'Content-Type': 'application/json'
+                        }
                     })
                     .then(response => response.json())
                     .then(data => {
-                        // Message sent successfully, agents will start responding
-                        showTypingIndicator('助手');
+                        if (data.status === 'success') {
+                            chatContainer.innerHTML = `
+                                <div class="welcome-message text-center py-8 text-gray-500">
+                                    <i class="fas fa-paw text-5xl mb-3 text-indigo-400"></i>
+                                    <h2 class="text-xl font-semibold mb-2">欢迎使用AI宠物助手群聊!</h2>
+                                    <p>输入您的宠物相关问题，多位AI助手将协作为您解答</p>
+                                </div>
+                                <div id="typing-indicator" class="message flex items-start hidden">
+                                    <div class="agent-avatar avatar-colors flex-shrink-0 mr-3">
+                                        <i class="fas fa-spinner"></i>
+                                    </div>
+                                    <div class="bubble agent-bubble">
+                                        <div class="typing-indicator">
+                                            <span></span>
+                                            <span></span>
+                                            <span></span>
+                                        </div>
+                                    </div>
+                                </div>`;
+                        }
                     })
-                    .catch(error => {
-                        console.error('Error sending message:', error);
-                        isWaitingForResponse = false;
-                    });
-                }
-            }
-            
-            // Event listeners
-            sendButton.addEventListener('click', sendMessage);
-            messageInput.addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') {
-                    sendMessage();
+                    .catch(error => console.error('Error:', error));
                 }
             });
             
-            // Poll for new messages every second
-            function pollMessages() {
-                fetch(`/get_messages?last_id=${lastMessageId}`)
+            // Submit message
+            messageForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                const message = messageInput.value.trim();
+                if (!message) return;
+                
+                // Add user message to chat
+                addMessage('用户', message, 'user');
+                messageInput.value = '';
+                
+                // Show typing indicator
+                typingIndicator.classList.remove('hidden');
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+                
+                // Send message to server
+                fetch('/api/message', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ message: message })
+                })
                 .then(response => response.json())
-                .then(messages => {
-                    if (messages.length > 0) {
-                        // Update last message id
-                        lastMessageId = messages[messages.length - 1].id;
-                        
-                        // Display messages
-                        messages.forEach(msg => {
-                            if (msg.sender === '用户' && document.querySelectorAll('.message').length > 1) {
-                                // Skip user messages that are already displayed
-                                return;
-                            }
-                            
-                            removeTypingIndicator();
-                            addMessage(msg.sender, msg.content);
-                            
-                            // Show typing indicator for next agent
-                            if (msg.sender === '用户') {
-                                showTypingIndicator('输入中');
-                            } else {
-                                showTypingIndicator(msg.sender);
-                            } 
+                .then(data => {
+                    // Hide typing indicator
+                    typingIndicator.classList.add('hidden');
+                    
+                    if (data.status === 'success') {
+                        // Add each agent response
+                        data.responses.forEach(response => {
+                            addMessage(response.agent, response.message, 'agent', response.description);
                         });
                     }
                 })
                 .catch(error => {
-                    console.error('Error polling messages:', error);
+                    console.error('Error:', error);
+                    typingIndicator.classList.add('hidden');
+                    addMessage('System', '发生错误，请重试', 'system');
                 });
-            }
+            });
             
-            // Start polling
-            setInterval(pollMessages, 1000);
+            function addMessage(sender, content, type, description = '') {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message flex items-start ${type === 'user' ? 'justify-end' : ''}`;
+                
+                // Check if message contains thinking content
+                let thinkingContent = '';
+                let messageContent = content;
+                
+                if (content.includes('<think>') && content.includes('</think>')) {
+                    const thinkStart = content.indexOf('<think>');
+                    const thinkEnd = content.indexOf('</think>');
+                    thinkingContent = content.substring(thinkStart + 7, thinkEnd);
+                    messageContent = content.substring(thinkEnd + 8).trim();
+                }
+                
+                if (type === 'user') {
+                    messageDiv.innerHTML = `
+                        <div class="bubble user-bubble">
+                            <strong>你</strong>
+                            <div>${messageContent}</div>
+                        </div>
+                    `;
+                } else if (type === 'agent') {
+                    // Get icon based on agent name
+                    let icon = 'fas fa-robot';
+                    let avatarStyle = '';
+                    
+                    if (sender.includes('网络情报专家')) {
+                        icon = 'fas fa-globe';
+                    } else if (sender.includes('智能硬件管家')) {
+                        icon = 'fas fa-microchip';
+                        avatarStyle = 'style="background: linear-gradient(135deg, #10b981, #059669);"';
+                    } else if (sender.includes('专业临床医生')) {
+                        icon = 'fas fa-user-md';
+                        avatarStyle = 'style="background: linear-gradient(135deg, #ef4444, #dc2626);"';
+                    } else if (sender.includes('温柔体贴小助理')) {
+                        icon = 'fas fa-heart';
+                        avatarStyle = 'style="background: linear-gradient(135deg, #f97316, #ea580c);"';
+                    } else if (sender.includes('群聊守护者')) {
+                        icon = 'fas fa-shield-alt';
+                        avatarStyle = 'style="background: linear-gradient(135deg, #3b82f6, #2563eb);"';
+                    }
+                    
+                    let thinkingElement = '';
+                    if (thinkingContent) {
+                        thinkingElement = `
+                            <div class="toggle-thinking">查看思考过程 <i class="fas fa-chevron-down"></i></div>
+                            <div class="thinking">${thinkingContent}</div>
+                        `;
+                    }
+                    
+                    messageDiv.innerHTML = `
+                        <div class="agent-avatar avatar-colors flex-shrink-0 mr-3" ${avatarStyle}>
+                            <i class="${icon}"></i>
+                        </div>
+                        <div class="flex-grow">
+                            <div class="bubble agent-bubble">
+                                <strong>${sender}</strong>
+                                <div>${messageContent}</div>
+                            </div>
+                            ${thinkingElement}
+                        </div>
+                    `;
+                } else {
+                    messageDiv.innerHTML = `
+                        <div class="mx-auto my-2 py-2 px-4 bg-yellow-100 text-yellow-800 rounded-lg">
+                            <i class="fas fa-exclamation-triangle mr-2"></i>${messageContent}
+                        </div>
+                    `;
+                }
+                
+                typingIndicator.before(messageDiv);
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+                
+                // Add event listener for thinking toggle if exists
+                const toggleThinking = messageDiv.querySelector('.toggle-thinking');
+                if (toggleThinking) {
+                    const thinkingBlock = messageDiv.querySelector('.thinking');
+                    toggleThinking.addEventListener('click', function() {
+                        thinkingBlock.style.display = thinkingBlock.style.display === 'block' ? 'none' : 'block';
+                        toggleThinking.innerHTML = thinkingBlock.style.display === 'block' ? 
+                            '隐藏思考过程 <i class="fas fa-chevron-up"></i>' : 
+                            '查看思考过程 <i class="fas fa-chevron-down"></i>';
+                        chatContainer.scrollTop = chatContainer.scrollHeight;
+                    });
+                }
+            }
         });
     </script>
 </body>
